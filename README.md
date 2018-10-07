@@ -1,61 +1,83 @@
-<h3 align="center">
-    <a href="https://github.com/umpirsky">
-        <img src="https://farm2.staticflickr.com/1709/25098526884_ae4d50465f_o_d.png" />
-    </a>
-</h3>
-<p align="center">
-  <a href="https://github.com/umpirsky/Symfony-Upgrade-Fixer">symfony upgrade fixer</a> &bull;
-  <a href="https://github.com/umpirsky/Twig-Gettext-Extractor">twig gettext extractor</a> &bull;
-  <a href="https://github.com/umpirsky/wisdom">wisdom</a> &bull;
-  <a href="https://github.com/umpirsky/centipede">centipede</a> &bull;
-  <a href="https://github.com/umpirsky/PermissionsHandler">permissions handler</a> &bull;
-  <a href="https://github.com/umpirsky/Extraload">extraload</a> &bull;
-  <a href="https://github.com/umpirsky/Gravatar">gravatar</a> &bull;
-  <a href="https://github.com/umpirsky/locurro">locurro</a> &bull;
-  <b>country list</b> &bull;
-  <a href="https://github.com/umpirsky/Transliterator">transliterator</a>
-</p>
+Composer Plugin Files Copier
+========================================
 
-Country List
-============
+This is a very simple Composer plugin working on the `post-install-cmd` and `post-update-cmd` events for copying from a source path to a distination folder.
 
-List of all countries with names and ISO 3166-1 codes in all languages and all data formats.
+I created this to avoid copying manualy the bootstrap less files into a temporary folder and overriding the variables.less for generating a custom bootstrap.css file using the less filter from the [symfony/assetic-bundle](https://github.com/symfony/assetic-bundle).
 
-Formats Available
------------------
 
-- Text
-- JSON
-- YAML
-- XML
-- HTML
-- CSV
-- SQL
-    * MySQL
-    * PostgreSQL
-    * SQLite
-- PHP
-- XLIFF
+Installation / Usage
+--------------------
 
-Multilingual
+1. In your composer.json project's file add the requirements
+
+    ``` json
+    {
+        "require": {
+            "sasedev/composer-plugin-filecopier": ">=1.0.0"
+        }
+    }
+    ```
+
+2. In your composer.json project's file add the config in the extra element
+
+    ``` json
+    {
+        "extra": {
+            "filescopier" : {
+                "source" : "vendor/twbs/bootstrap/less",
+                "destination" : "var/less/bootstrap",
+                "debug": "true"
+            }
+        }
+    }
+    ```
+
+    or
+
+    ``` json
+    {
+        "extra": {
+            "filescopier" : [
+                {
+                    "source" : "vendor/twbs/bootstrap/less",
+                    "destination" : "var/less/bootstrap",
+                    "debug": "true"
+                }, {
+                    "source" : "src/Sasedev/ResBundle/Resources/less/bootstrap/*.less",
+                    "destination" : "var/less/bootstrap"
+                }, {
+                    "source" : "/home/sasedev/Documents/*.pdf",
+                    "destination" : "var/test"
+                }
+            ]
+        }
+    }
+    ```
+
+
+    > **Note:** The destination element must be a folder. if the destination folder does not exists, it is recursively created using `mkdir($destination, 0755, true)`.
+
+    > **Note:** If the destination folder is not an absolute path, the relative path is calculated using the vendorDir path (`$project_path = \realpath($this->composer->getConfig()->get('vendor-dir').'/../').'/'`;)
+
+    > **Note:** The source element is evaluated using the php function `\glob($source, GLOB_MARK)` and a recursive copy is made for every result of this function into the destination folder
+
+3. Run Composer: `php composer.phar update`.
+
+
+Requirements
 ------------
 
-All formats are also available in multiple languages, please find full language list [here](https://github.com/umpirsky/country-list/tree/master/data).
+PHP 5.5 or above (at least 5.5.9 recommended to avoid potential bugs)
 
-Build
------
 
-Country list is available out of the box, but if you want to submit patches, add new formats,
-update data source or contribute in any other way, you will probably want to rebuild the list:
+Authors
+-------
 
-```bash
-$ docker-compose run php /var/www/html/bin/build -v
-```
+Abdelkadeur Seifeddine Salah - <seif.salah@gmail.com> - <http://sasedev.net><br />
 
-Other Interesting Lists
------------------------
 
-* [Currency List](https://github.com/umpirsky/currency-list)
-* [Language List](https://github.com/umpirsky/language-list)
-* [Locale List](https://github.com/umpirsky/locale-list)
-* [TLD List](https://github.com/umpirsky/tld-list)
+License
+-------
+
+Composer is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details
