@@ -57,6 +57,16 @@ class Processor
             $this->io->write('[sasedev/composer-plugin-filecopier] init destination : ' . $destination);
         }
 
+        if ($config['createDestination'] === true)
+        {
+            if (!\is_dir($destination)) 
+            {
+                if ($debug)
+                    $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
+                mkdir($destination, 0755, true);
+            }
+		}
+		
         $sources = \glob($source, GLOB_MARK);
         if (!empty($sources)) 
         {
@@ -119,16 +129,6 @@ class Processor
             return true;
         }
         
-        if ($config['createDestination'] === true)
-        {
-            if (!\is_dir($destination)) 
-            {
-                if ($debug)
-                    $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
-                mkdir($destination, 0755, true);
-            }
-        }
-
         // Check for symlinks
         if (\is_link($source)) {
             if ($debug) {
