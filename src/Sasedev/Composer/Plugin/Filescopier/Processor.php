@@ -13,236 +13,243 @@ use Composer\Script\Event;
 class Processor
 {
 
-	/**
-	 *
-	 * @var IOInterface
-	 */
-	private $io;
+    /**
+     *
+     * @var IOInterface
+     */
+    private $io;
 
-	/**
-	 *
-	 * @var Composer $composer
-	 */
-	private $composer;
+    /**
+     *
+     * @var Composer $composer
+     */
+    private $composer;
 
-	public function __construct(Event $ev)
-	{
+    private $originalSource;
+    private $originalDest;
+    private $extensions;
 
-		$this->io = $ev->getIO();
+    public function __construct(Event $ev)
+    {
+        $this->io = $ev->getIO();
+        $this->composer = $ev->getComposer();
+    }
 
-		$this->composer = $ev->getComposer();
-	}
+    public function processCopy(array $config)
+    {
+        $config = $this->processConfig($config);
+        $project_path = realpath(realpath($this->composer->getConfig()->get('vendor-dir').'/../').'/');
+        $debug = $config['debug'];
 
-	public function processCopy(array $config)
-	{
+        if ($debug) {
+            $this->io->write('[sasedev/composer-plugin-filecopier] basepath : '.$project_path);
+        }
 
-		$config = $this->processConfig($config);
+        $this->originalSource = $config['source'];
+        $this->originalDest = $config['destination'];
+        $this->extensions = $config['extension'];
 
-		$project_path = \realpath($this->composer->getConfig()->get('vendor-dir').'/../').'/';
+        $source =  realpath($project_path ."/" . preg_replace('/\*.*$/', '', $this->originalSource));
+        $destination =   $this->GetAbsolutePath($project_path ."/" .  preg_replace('/\*.*$/', '', $this->originalDest));
 
-		$debug = $config['debug'];
+        if ($debug) {
+            $this->io->write('[sasedev/composer-plugin-filecopier] init source : ' . $source);
+            $this->io->write('[sasedev/composer-plugin-filecopier] init destination : ' . $destination);
+        }
 
-		if ($debug) {
-			$this->io->write('[sasedev/composer-plugin-filecopier] basepath : '.$project_path);
-		}
+        $sources = \glob($source, GLOB_MARK);
+        if (!empty($sources)) 
+        {
+            foreach ($sources as $newsource)
+                $this->copyr($newsource, $destination, true, $debug);
+        }
+    }
 
-		$destination = $config['destination'];
+    private function processConfig(array $config)
+    {
+        if (empty($config['source'])) {
+            throw new \InvalidArgumentException('The extra.filescopier.source setting is required to use this script handler.');
+        }
 
-		if (\strlen($destination) == 0 || (\strlen($destination) != 0 && !$this->startsWith($destination, '/'))) {
-			$destination = $project_path.$destination;
-		}
+        if (empty($config['destination'])) {
+            throw new \InvalidArgumentException('The extra.filescopier.destination setting is required to use this script handler.');
+        }
 
-		if (false === \realpath($destination)) {
-			mkdir($destination, 0755, true);
-		}
-		$destination = \realpath($destination);
+        if (empty($config['debug']) || $config['debug'] != 'true') {
+            $config['debug'] = false;
+        } else {
+            $config['debug'] = true;
+        }
+        
+        if (empty($config['extension']))
+            $config['extension'] = array();
+        else
+        {
+            $config['extension'] = array_map('strtolower', explode('|', $config['extension']));
+        }
+        return $config;
+    }
 
-		$source = $config['source'];
+    private function copyr($source, $destination, $isRoot, $debug = false)
+    {        
+        $originalSource = $source;
+        $originalDest = $destination;
 
-		if ($debug) {
-			$this->io->write('[sasedev/composer-plugin-filecopier] init source : '.$source);
-			$this->io->write('[sasedev/composer-plugin-filecopier] init destination : '.$destination);
-		}
+        $source = realpath($source);
+        $destination = $this->GetAbsolutePath($destination . '/');
 
-		$sources = \glob($source, GLOB_MARK);
-		
-		if (!empty($sources)) {
-			foreach ($sources as $newsource) {
-				$this->copyr($newsource, $destination, $project_path, $debug, !empty($config['source_root']) ? $config['source_root'] : null);
-			}
-		}
+        if (false === $source || empty($source)) {
+            if ($debug) 
+                $this->io->write('[sasedev/composer-plugin-filecopier] No copy : source (' . $originalSource . ') not valid!');
+            return true;
+        }
 
-	}
+        if (empty($destination)) {
+            if ($debug) 
+                $this->io->write('[sasedev/composer-plugin-filecopier] No copy : dest (' . $originalDest . ') not valid!');
+            return true;
+        }
 
-	private function processConfig(array $config)
-	{
+        if ($source === $destination) {
+            if ($debug)
+                $this->io->write('[sasedev/composer-plugin-filecopier] No copy : source ('.$source.') and destination ('.$destination.') are identicals');
+            return true;
+        }
+        
+        // Check for symlinks
+        if (\is_link($source)) {
+            if ($debug) {
+                $this->io->write('[sasedev/composer-plugin-filecopier] Copying Symlink '.source.' to '.$destination);
+            }
+            $source_entry = \basename($source);
+            if (!$debug) 
+                return \symlink(\readlink($source), $destination.'/'.$source_entry);
+            return true;
+        }
 
-		if (empty($config['source'])) {
-			throw new \InvalidArgumentException('The extra.filescopier.source setting is required to use this script handler.');
-		}
+        if (\is_dir($source)) 
+        {
+            if ($debug) 
+                $this->io->write('[sasedev/composer-plugin-filecopier] Scanning Folder '. $source);
 
-		if (empty($config['destination'])) {
-			throw new \InvalidArgumentException('The extra.filescopier.destination setting is required to use this script handler.');
-		}
+            // Loop through the folder
+            if (!$isRoot)
+            {
+                $source_entry = \basename($source);
+                $destination =  $this->GetAbsolutePath($destination.'/'.$source_entry.'/');
 
-		if (empty($config['debug']) || $config['debug'] != 'true') {
-			$config['debug'] = false;
-		} else {
-			$config['debug'] = true;
-		}
+                if (!file_exists($destination) || !\is_dir($destination)) 
+                {
+                    if ($debug)
+                        $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
+                    mkdir($destination, 0755, true);
+                }
+            }
 
-		if (!empty($config['source_root']))
-		{
-			$config['source_root'] = \realpath($config['source_root']);
-		}
-		
-		return $config;
+            $dir = \dir($source);
+            while (false !== $entry = $dir->read()) {
+                // Skip pointers
+                if ($entry == '.' || $entry == '..') {
+                    continue;
+                }
 
-	}
+                // Deep copy directories
+                $sourcePath = realpath($source.'/'.$entry);
+                if ($sourcePath !== false)
+                    $this->copyr($sourcePath, $destination, false, $debug);
+            }
 
-	private function copyr($source, $destination, $project_path, $debug = false, $source_root = null)
-	{		
-		if (\strlen($source) == 0 || (\strlen($source) != 0 && !$this->startsWith($source, '/'))) {
-			$source = $project_path.$source;
-		}
+            // Clean up
+            $dir->close();
+            return true;
+        }
 
-		if (false === \realpath($source)) {
-			if ($debug) {
-				$this->io->write('[sasedev/composer-plugin-filecopier] No copy : source ('.$source.') does not exist');
-			}
-		}
+        if (\is_file($source)) 
+        {
+            $source_entry = basename($source);
+            if (\is_dir($destination))
+            {
+                $destination = $this->GetAbsolutePath($destination.'/'.$source_entry);
+            }
+            else
+            {
+                $this->io->write('[sasedev/composer-plugin-filecopier] Destination is not a dir. Dest: '.$destination);
+                return true;
+            }
+            
 
-		$source = \realpath($source);
+            $pathInfo = pathinfo($source);
+            if (empty($this->extensions) || in_array(strtolower($pathInfo['extension']), $this->extensions))
+            {
+                if ($debug)
+                    $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
+                return \copy($source, $destination);
+            }
+            else if ($debug)
+                $this->io->write('[sasedev/composer-plugin-filecopier] Invalid file extension: ' . $source);
+        }
+        return true;
+    }
 
-		if ($source === $destination && \is_dir($source)) {
-			if ($debug) {
-				$this->io->write('[sasedev/composer-plugin-filecopier] No copy : source ('.$source.') and destination ('.$destination.') are identicals');
-			}
-			return true;
-		}
+    /**
+     * Check if a string starts with a prefix
+     *
+     * @param string $string
+     * @param string $prefix
+     *
+     * @return boolean
+     */
+    private function startsWith($string, $prefix) {
+        return $prefix === "" || strrpos($string, $prefix, -strlen($string)) !== FALSE;
+    }
 
+    /**
+     * Check if a string ends with a suffix
+     *
+     * @param string $string
+     * @param string $suffix
+     *
+     * @return boolean
+     */
+    private function endswith($string, $suffix)
+    {
+        $strlen = strlen($string);
+        $testlen = strlen($suffix);
+        if ($testlen > $strlen) {
+            return false;
+        }
 
-		// Check for symlinks
-		if (\is_link($source)) {
-			if ($debug) {
-				$this->io->write('[sasedev/composer-plugin-filecopier] Copying Symlink '.source.' to '.$destination);
-			}
-			$source_entry = \basename($source);
-			return \symlink(\readlink($source), $destination.'/'.$source_entry);
-		}
-			
-		if (\is_dir($source)) {
-			// Loop through the folder
-			$source_entry = \basename($source);
-			if ($project_path.$source_entry == $source) {
-				$destination = $destination.'/'.$source_entry;
-			}
-				
-			// Make destination directory
-			if (!\is_dir($destination)) {
-				if ($debug) {
-					$this->io->write('[sasedev/composer-plugin-filecopier] New Folder '.$destination);
-				}
-				\mkdir($destination);
-			}
+        return substr_compare($string, $suffix, -$testlen) === 0;
+    }
+    
+    private function relativePath($from, $to, $separator = DIRECTORY_SEPARATOR)
+    {
+        $from   = str_replace(array('/', '\\'), $separator, $from);
+        $to     = str_replace(array('/', '\\'), $separator, $to);
 
-			if ($debug) {
-				$this->io->write('[sasedev/composer-plugin-filecopier] Scanning Folder '.$source);
-			}
+        $arFrom = explode($separator, rtrim($from, $separator));
+        $arTo = explode($separator, rtrim($to, $separator));
+        while(count($arFrom) && count($arTo) && ($arFrom[0] == $arTo[0]))
+        {
+            array_shift($arFrom);
+            array_shift($arTo);
+        }
 
-			$dir = \dir($source);
-			while (false !== $entry = $dir->read()) {
-				// Skip pointers
-				if ($entry == '.' || $entry == '..') {
-					continue;
-				}
+        return str_pad("", count($arFrom) * 3, '..'.$separator).implode($separator, $arTo);
+    }
 
-				// Deep copy directories
-				$this->copyr($source.'/'.$entry, $destination.'/'.$entry, $project_path, $debug);
-			}
-
-			// Clean up
-			$dir->close();
-			return true;
-		}
-
-		// Simple copy for a file
-		if (\is_file($source)) {
-			$source_entry = \basename($source);
-			if ($project_path.$source_entry == $source || \is_dir($destination)) {
-				if (empty($source_root))
-				{
-					$destination = $destination.'/'.$source_entry;
-				}
-				else
-				{
-					$relativePath = $this->relativePath($source_root, $source);
-					if ($debug) {
-						$this->io->write('[sasedev/composer-plugin-filecopier] Relative Path: '.$relativePath);
-					}
-					$destination = $destination.'/'.$relativePath;
-				}
-			}
-			
-			if ($debug) {
-				$this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
-			}
-
-			$dirName = dirname($destination);
-			if (!file_exists($dirName))
-				mkdir($dirName, 0755, true);
-			return \copy($source, $destination);
-		}
-
-
-		return true;
-
-	}
-
-	/**
-	 * Check if a string starts with a prefix
-	 *
-	 * @param string $string
-	 * @param string $prefix
-	 *
-	 * @return boolean
-	 */
-	private function startsWith($string, $prefix) {
-		return $prefix === "" || strrpos($string, $prefix, -strlen($string)) !== FALSE;
-	}
-
-	/**
-	 * Check if a string ends with a suffix
-	 *
-	 * @param string $string
-	 * @param string $suffix
-	 *
-	 * @return boolean
-	 */
-	private function endswith($string, $suffix)
-	{
-		$strlen = strlen($string);
-		$testlen = strlen($suffix);
-		if ($testlen > $strlen) {
-			return false;
-		}
-
-		return substr_compare($string, $suffix, -$testlen) === 0;
-	}
-	
-	private function relativePath($from, $to, $separator = DIRECTORY_SEPARATOR)
-	{
-		$from   = str_replace(array('/', '\\'), $separator, $from);
-		$to     = str_replace(array('/', '\\'), $separator, $to);
-
-		$arFrom = explode($separator, rtrim($from, $separator));
-		$arTo = explode($separator, rtrim($to, $separator));
-		while(count($arFrom) && count($arTo) && ($arFrom[0] == $arTo[0]))
-		{
-			array_shift($arFrom);
-			array_shift($arTo);
-		}
-
-		return str_pad("", count($arFrom) * 3, '..'.$separator).implode($separator, $arTo);
-	}
+    function GetAbsolutePath($path) {
+        $path = str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
+        $parts = array_filter(explode(DIRECTORY_SEPARATOR, $path), 'strlen');
+        $absolutes = array();
+        foreach ($parts as $part) {
+            if ('.' == $part) continue;
+            if ('..' == $part) {
+                array_pop($absolutes);
+            } else {
+                $absolutes[] = $part;
+            }
+        }
+        return implode(DIRECTORY_SEPARATOR, $absolutes);
+    }
 }
