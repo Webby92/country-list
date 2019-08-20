@@ -60,7 +60,7 @@ class Processor
 
         if ($config['createDestination'] == true)
         {
-            if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
+            //if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
             {
 				if (!mkdir($destination, 0755, true))
 				{
@@ -159,12 +159,12 @@ class Processor
                 $source_entry = \basename($source);
 				$destination =  $this->GetAbsolutePath($destination.'/'.$source_entry.'/');
 				
-				if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
+				//if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
 				{
 					if (!mkdir($destination, 0755, true))
 					{
 						$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destination);
-						return true;
+				//		return true;
 					}
 					else
 					{
@@ -214,12 +214,12 @@ class Processor
             $pathInfo = pathinfo($source);
             if (empty($this->extensions) || in_array(strtolower($pathInfo['extension']), $this->extensions))
             {
-                if (!file_exists($destinationFolder) || (file_exists($destinationFolder) && is_file($destinationFolder))) 
+                // if (!file_exists($destinationFolder) || (file_exists($destinationFolder) && is_file($destinationFolder))) 
                 {
 					if (!mkdir($destinationFolder, 0755, true))
 					{
 						$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destinationFolder);
-						return true;
+					//	return true;
 					}
 					else
 					{
@@ -228,8 +228,8 @@ class Processor
 					}
                 }
                 
-                if ($debug)
-                     $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
+                // if ($debug)
+                //      $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
                 return \copy($source, $destination);
             }
             else if ($debug)
