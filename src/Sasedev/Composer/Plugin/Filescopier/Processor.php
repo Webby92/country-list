@@ -58,7 +58,7 @@ class Processor
             $this->io->write('[sasedev/composer-plugin-filecopier] init destination : ' . $destination);
         }
 
-        if ($config['createDestination'] === true)
+        if ($config['createDestination'] == true)
         {
             if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
             {
@@ -157,23 +157,21 @@ class Processor
             if (!$isRoot)
             {
                 $source_entry = \basename($source);
-                if (!\is_dir($destination)) 
-                {
-					if (!\is_dir($destination)) 
+				$destination =  $this->GetAbsolutePath($destination.'/'.$source_entry.'/');
+				
+				if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
+				{
+					if (!mkdir($destinationFolder, 0755, true))
 					{
-						if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
-						{
-							$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destination);
-							return true;
-						}
-						else
-						{
-							if ($debug)
-								$this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
-						}
+						$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destination);
+						return true;
 					}
-                }
-                $destination =  $this->GetAbsolutePath($destination.'/'.$source_entry.'/');
+					else
+					{
+						if ($debug)
+							$this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
+					}
+				}
             }
             else
             {
@@ -216,11 +214,18 @@ class Processor
             $pathInfo = pathinfo($source);
             if (empty($this->extensions) || in_array(strtolower($pathInfo['extension']), $this->extensions))
             {
-                if (!file_exists($destinationFolder)) 
+                if (!file_exists($destinationFolder) || (file_exists($destinationFolder) && is_file($destinationFolder))) 
                 {
-                    if ($debug)
-                        $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destinationFolder);
-                    mkdir($destination, 0755, true);
+					if (!mkdir($destinationFolder, 0755, true))
+					{
+						$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destinationFolder);
+						return true;
+					}
+					else
+					{
+						if ($debug)
+							$this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destinationFolder);
+					}
                 }
                 
                 if ($debug)
