@@ -81,6 +81,9 @@ class Processor
             $config['debug'] = true;
         }
         
+        if (empty($config['createDestination']) || !is_bool($config['createDestination']))
+            $config['createDestination'] = false;
+
         if (empty($config['extension']))
             $config['extension'] = array();
         else
@@ -116,6 +119,16 @@ class Processor
             return true;
         }
         
+        if ($config['createDestination'] === true)
+        {
+            if (!\is_dir($destination)) 
+            {
+                if ($debug)
+                    $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
+                mkdir($destination, 0755, true);
+            }
+        }
+
         // Check for symlinks
         if (\is_link($source)) {
             if ($debug) {
@@ -144,6 +157,11 @@ class Processor
                         $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destination);
                     mkdir($destination, 0755, true);
                 }
+            }
+            else
+            {
+                if ($debug)
+                    $this->io->write('[sasedev/composer-plugin-filecopier] Root not created Folder '. $destination);
             }
 
             $dir = \dir($source);
@@ -189,7 +207,7 @@ class Processor
                 }
                 
                 if ($debug)
-                    $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
+                     $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
                 return \copy($source, $destination);
             }
             else if ($debug)
