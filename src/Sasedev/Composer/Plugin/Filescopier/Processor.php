@@ -161,7 +161,7 @@ class Processor
 				
 				if (!file_exists($destination) || (file_exists($destination) && is_file($destination))) 
 				{
-					if (!mkdir($destinationFolder, 0755, true))
+					if (!mkdir($destination, 0755, true))
 					{
 						$this->io->write('[sasedev/composer-plugin-filecopier] New Folder Creation FAILED!'. $destination);
 						return true;
