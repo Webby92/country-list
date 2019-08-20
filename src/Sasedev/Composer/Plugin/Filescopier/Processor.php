@@ -50,7 +50,7 @@ class Processor
         $this->originalDest = $config['destination'];
         $this->extensions = $config['extension'];
 
-        $source =  realpath("/". $project_path ."/" . preg_replace('/\*.*$/', '', $this->originalSource));
+        $source =  realpath($project_path ."/" . preg_replace('/\*.*$/', '', $this->originalSource));
         $destination =   $this->GetAbsolutePath("/". $project_path ."/" .  preg_replace('/\*.*$/', '', $this->originalDest));
 
         if ($debug) {
@@ -311,7 +311,11 @@ class Processor
             } else {
                 $absolutes[] = $part;
             }
-        }
-        return implode(DIRECTORY_SEPARATOR, $absolutes);
+		}
+
+		if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') 
+			return implode(DIRECTORY_SEPARATOR, $absolutes);
+		else
+			return DIRECTORY_SEPARATOR.implode(DIRECTORY_SEPARATOR, $absolutes);
     }
 }
