@@ -167,6 +167,7 @@ class Processor
         if (\is_file($source)) 
         {
             $source_entry = basename($source);
+            $destinationFolder = $destination;
             if (\is_dir($destination))
             {
                 $destination = $this->GetAbsolutePath($destination.'/'.$source_entry);
@@ -176,11 +177,17 @@ class Processor
                 $this->io->write('[sasedev/composer-plugin-filecopier] Destination is not a dir. Dest: '.$destination);
                 return true;
             }
-            
 
             $pathInfo = pathinfo($source);
             if (empty($this->extensions) || in_array(strtolower($pathInfo['extension']), $this->extensions))
             {
+                if (!file_exists($destinationFolder) || !\is_dir($destinationFolder)) 
+                {
+                    if ($debug)
+                        $this->io->write('[sasedev/composer-plugin-filecopier] New Folder '. $destinationFolder);
+                    mkdir($destination, 0755, true);
+                }
+                
                 if ($debug)
                     $this->io->write('[sasedev/composer-plugin-filecopier] Copying File '.$source.' to '.$destination);
                 return \copy($source, $destination);
